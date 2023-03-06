@@ -25,7 +25,7 @@ export const Navbar = () => {
                 <AiFillHeart className="text-3xl" />
                 <p>wishlist</p>
             </div>
-            <a href="/login">
+            <a href="/profile">
                 <div className="flex flex-col items-center text-indigo-800 font-bold">
                     <BsPerson className="text-3xl" />
                     <p>profile</p>

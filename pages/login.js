@@ -2,12 +2,12 @@ import { useEffect, useState } from "react"
 import { useMoralis } from "react-moralis"
 import { ethers } from "ethers"
 import profiler_ABI from "../constants/profilerABI.json"
+import fleekStorage from "@fleekhq/fleek-storage-js"
 import RLNFT_ABI from "../constants/RLNFTABI.json"
 import address from "../constants/Addresses.json"
 
 export default function Login() {
     const { isWeb3Enabled, enableWeb3, account } = useMoralis()
-    const [tokens, setTokens] = useState([])
 
     const logIn = async () => {
         if (isWeb3Enabled) {

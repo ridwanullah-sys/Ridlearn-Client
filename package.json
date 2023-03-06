@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@fleekhq/fleek-storage-js": "^1.0.24",
     "@web3uikit/core": "^0.2.47",
     "@web3uikit/icons": "^0.2.46",
     "@web3uikit/web3": "^0.2.2",
