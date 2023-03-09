@@ -1,190 +1,257 @@
 import fleekStorage from "@fleekhq/fleek-storage-js"
 import { ethers } from "ethers"
 import RLNFT_ABI from "../constants/RLNFTABI.json"
+import profiler_ABI from "../constants/profilerABI.json"
 import address from "../constants/Addresses.json"
+import { Token } from "nft.storage"
 
-const API_SECRET = process.env.NEXT_PUBLIC_FLEEK_API_SECRET
-const API_KEY = process.env.NEXT_PUBLIC_FLEEK_API_KEY
-
-export const getUserData = async (setError, account, user_name) => {
-    let addressData, usernameData
-    const enc = new TextDecoder("utf-8")
-    let myFile = []
-    try {
-        myFile = await fleekStorage.get({
-            apiKey: API_KEY,
-            apiSecret: API_SECRET,
-            key: `profiles`,
-            getOptions: ["data"],
-        })
-    } catch (e) {
-        console.log(e)
-        setError("error getting data")
-        return
+export const getUserData = async (isWeb3Enabled, account, provider, setLoadingGetUserData) => {
+    setLoadingGetUserData(true)
+    let User
+    if (isWeb3Enabled && provider) {
+        const profiler = new ethers.Contract(address.profiler_Address, profiler_ABI, provider)
+        User = await profiler.registeredStudent(account)
+        setLoadingGetUserData(false)
     }
-    const data = JSON.parse(enc.decode(myFile.data))
-    const address = data.find((datum) => datum.address == account)
-    const username = data.find((datum) => datum.username == user_name)
-    if (address) {
-        addressData = address
-    } else if (data && !address) {
-        addressData = "User Not Registered"
-    }
-    if (username) {
-        usernameData = username
-    } else if (data && !username) {
-        usernameData = "Username Still Available"
-    }
-    setError(null)
-
-    return [addressData, usernameData, data]
-}
-
-export const Upload = async (setError, account, user_name, email) => {
-    console.log("getting .....")
-    if (!ethers.utils.isAddress(account)) {
-        setError("invalid Address")
-        console.log("invalid Address")
-        return
-    }
-    const userData = await getUserData(setError, account, user_name)
-    const data = userData[2]
-    const datumUsername = userData[1]
-    const datumAddress = userData[0]
-    console.log(userData)
-
-    if (datumUsername == "Username Still Available" && datumAddress == "User Not Registered") {
-        const newProfile = {
-            address: account,
-            username: user_name,
-            email: email,
-        }
-        data.push(newProfile)
-        console.log("uploading................")
-        try {
-            await fleekStorage.upload({
-                apiKey: API_KEY,
-                apiSecret: API_SECRET,
-                key: `profiles`,
-                data: JSON.stringify(data),
-            })
-        } catch (e) {
-            console.log(e)
-            setError(`uploading Error`)
-            return
-        }
+    if (User.exist != true) {
+        setLoadingGetUserData(false)
+        return "User Not Registered"
     } else {
-        if (datumAddress != "User Not Registered") {
-            setError(`Address, already reagistered with the Username ${datumAddress.username}`)
-            console.log(`Address, already reagistered with the Username ${datumAddress.username}`)
-            return
-        } else if (datumUsername != "Username Still Available") {
-            setError(`UserName already used, please try somthing else`)
-            console.log(`UserName already used, please try somthing else`)
-            return
-        }
+        setLoadingGetUserData(false)
+        return User
     }
-    window.location.reload()
 }
 
-export const deleteAccount = async (setError, account, user_name) => {
-    console.log("getting.....")
-    const userData = await getUserData(setError, account, user_name)
-    const data = userData[2]
-    const datumAccount = userData[0]
-    if (datumAccount != "User Not Registered" && datumAccount != undefined) {
-        console.log("deleting.....")
-        data.pop(datumAccount)
+export const newUser = async (
+    isWeb3Enabled,
+    provider,
+    firstName,
+    lastName,
+    UserName,
+    setError,
+    setLoadingNewUser
+) => {
+    setLoadingNewUser(true)
+    if (isWeb3Enabled && provider) {
+        const signer = await provider.getSigner()
+        const profiler = new ethers.Contract(address.profiler_Address, profiler_ABI, provider)
         try {
-            await fleekStorage.upload({
-                apiKey: API_KEY,
-                apiSecret: API_SECRET,
-                key: `profiles`,
-                data: JSON.stringify(data),
-            })
+            await profiler.connect(signer).add_User(firstName, lastName, UserName)
+            window.location.reload()
         } catch (e) {
-            console.log(e)
-            setError(`uploading Error`)
-            return
-        }
-    } else {
-        console.log("account not registered")
-        setError("account not registered")
-        return
-    }
-    window.location.reload()
-}
-
-export const editAccount = async (setError, account, user_name, email) => {
-    console.log("getting.....")
-    const userData = await getUserData(setError, account, user_name)
-    const data = userData[2]
-    const datumAccount = userData[0]
-    const datumUsername = userData[1]
-    if (datumAccount != "User Not Registered" && datumAccount != undefined) {
-        if (datumUsername != "Username Still Available") {
-            setError("UserName Not availbale")
-            console.log("UserName Not availbale")
-            return
-        }
-        console.log("editing.....")
-        const IndexOfDatum = data.indexOf(datumAccount)
-        datumAccount.username = user_name
-        datumAccount.email = email
-        data[IndexOfDatum] = datumAccount
-
-        if (datumAccount.username == user_name && datumAccount.email == email) {
-            try {
-                await fleekStorage.upload({
-                    apiKey: API_KEY,
-                    apiSecret: API_SECRET,
-                    key: `profiles`,
-                    data: JSON.stringify(data),
-                })
-            } catch (e) {
-                console.log(e)
-                setError(`uploading Error`)
-                return
+            if (e.data.message.includes("'Address Registered'")) {
+                setError("Address Registered")
+                console.log(e.data.message)
+            } else if (e.data.message.includes("'username already used'")) {
+                setError("username already used")
+                console.log(console.log(e.data.message))
+            } else {
+                console.log(e.data.message)
             }
         }
-    } else {
-        console.log("account not registered")
-        setError("account not registered")
-        return
     }
-    window.location.reload()
+    setLoadingNewUser(false)
 }
 
-export const getInstructorData = async (isWeb3Enabled, enableWeb3, account) => {
-    let Instructor
-    if (isWeb3Enabled) {
-        let provider = await enableWeb3()
-        if (provider == undefined) {
-            provider = new ethers.providers.Web3Provider(window.ethereum)
+export const deleteAccount = async (isWeb3Enabled, provider, setLoadingDeleteAccount) => {
+    setLoadingDeleteAccount(true)
+    if (isWeb3Enabled && provider) {
+        const signer = await provider.getSigner()
+        const profiler = new ethers.Contract(address.profiler_Address, profiler_ABI, provider)
+        try {
+            await profiler.connect(signer).delete_UserProfile()
+            window.location.reload()
+        } catch (e) {
+            if (e.data.message.includes("'Address not registered'")) {
+                console.log(e.data.message)
+            }
         }
+    }
+    setLoadingDeleteAccount(false)
+}
+
+export const editAccount = async (
+    isWeb3Enabled,
+    provider,
+    firstName,
+    lastName,
+    UserName,
+    setError,
+    setLoadingEditAccount
+) => {
+    setLoadingEditAccount(true)
+    if (isWeb3Enabled && provider) {
+        const signer = await provider.getSigner()
+        const profiler = new ethers.Contract(address.profiler_Address, profiler_ABI, provider)
+        try {
+            await profiler.connect(signer).edit_UserProfile(firstName, lastName, UserName)
+            window.location.reload()
+        } catch (e) {
+            if (e.data.message.includes("'Address not registered'")) {
+                setError("Address not registered")
+                console.log(e.data.message)
+            } else if (e.data.message.includes("'username already used'")) {
+                setError("username already used")
+                console.log(console.log(e.data.message))
+            } else {
+                console.log(e.data.message)
+            }
+        }
+    }
+    setLoadingEditAccount(false)
+}
+
+export const getTokens = async (
+    isWeb3Enabled,
+    account,
+    provider,
+    setUserIds,
+    setLoadingGetTokens
+) => {
+    setLoadingGetTokens(true)
+    let Instructor
+    if (isWeb3Enabled && provider) {
         const RLNFT = new ethers.Contract(address.RLNFT_Address, RLNFT_ABI, provider)
         const Tokens = await RLNFT.getTokensOwned(account)
-        const tokenArray = []
+        const setting = new Promise(async (resolve) => {
+            const array = {}
+            Tokens.forEach(async (element) => {
+                const data = await RLNFT.tokenURI(element.toString())
+                const key = element.toString()
+                array[key] = JSON.parse(data).Owner[0].userId
 
-        if (Tokens.length > 0) {
-            const convertToArray = new Promise(async (resolve) => {
-                Tokens.forEach(async (token) => {
-                    const data = await RLNFT.tokenURI(token)
-                    tokenArray.push(JSON.parse(data).Owner)
-                    if (tokenArray.length >= Tokens.length) {
-                        resolve()
-                    }
-                })
+                if (Object.keys(array).length >= Tokens.length) {
+                    console.log(array[5])
+                    setUserIds(array)
+                    resolve()
+                }
             })
-            await convertToArray
-        }
-        if (tokenArray.length < 1) {
+
+            if (Tokens.length < 1) {
+                console.log(array)
+                resolve()
+            }
+        })
+        await setting
+        if (Tokens.length < 1) {
             Instructor = "Not An Instructor"
         } else {
-            Instructor = tokenArray
+            Instructor = Tokens
         }
     } else {
         Instructor = "please, connect you wallet"
     }
+    setLoadingGetTokens(false)
     return Instructor
+}
+export const getInstructorData = async (
+    isWeb3Enabled,
+    tokenId,
+    provider,
+    setData,
+    setLoadingInstructorData
+) => {
+    setLoadingInstructorData(true)
+    if (isWeb3Enabled && provider) {
+        const RLNFT = new ethers.Contract(address.RLNFT_Address, RLNFT_ABI, provider)
+        const data = await RLNFT.tokenURI(tokenId)
+        console.log(JSON.parse(data).Owner[0])
+        setData(JSON.parse(data).Owner[0])
+        setLoadingInstructorData(false)
+        return JSON.parse(data).Owner[0]
+    } else {
+        setLoadingInstructorData(false)
+        return "Not connected"
+    }
+}
+
+export const newInstructor = async (
+    isWeb3Enabled,
+    provider,
+    firstName,
+    lastName,
+    userId,
+    profession,
+    briefIntro,
+    faceBook,
+    youtube,
+    email,
+    imageLink,
+    setError,
+    setLoadingNewInstructor
+) => {
+    setLoadingNewInstructor(true)
+    if (isWeb3Enabled && provider) {
+        const signer = await provider.getSigner()
+        const profiler = new ethers.Contract(address.profiler_Address, profiler_ABI, provider)
+        try {
+            await profiler
+                .connect(signer)
+                .add_Instructor(
+                    `${firstName} ${lastName}`,
+                    userId,
+                    profession,
+                    briefIntro,
+                    [faceBook, youtube, email],
+                    "imageLink",
+                    address.RLNFT_Address
+                )
+            window.location.reload()
+        } catch (e) {
+            setError("Upload Error")
+            console.log(e.data.message)
+        }
+    }
+    setLoadingNewInstructor(false)
+}
+
+export const EditInstructor = async (
+    isWeb3Enabled,
+    provider,
+    firstName,
+    lastName,
+    userId,
+    profession,
+    briefIntro,
+    faceBook,
+    youtube,
+    email,
+    imageLink,
+    tokenId,
+    setError,
+    setLoadingEditInstructor
+) => {
+    setLoadingEditInstructor(true)
+    if (isWeb3Enabled && provider) {
+        const signer = await provider.getSigner()
+        const profiler = new ethers.Contract(address.profiler_Address, profiler_ABI, provider)
+        try {
+            await profiler
+                .connect(signer)
+                .edit_InstructorProfile(
+                    `${firstName} ${lastName}`,
+                    userId,
+                    profession,
+                    briefIntro,
+                    [faceBook, youtube, email],
+                    "imageLink",
+                    tokenId,
+                    address.RLNFT_Address
+                )
+            window.location.reload()
+        } catch (e) {
+            setError("Upload Error")
+            console.log(e.data.message)
+        }
+    }
+    setLoadingEditInstructor(false)
+}
+
+export const sendsofn = async (provider) => {
+    const signer = await provider.getSigner()
+    const profiler = new ethers.Contract(address.profiler_Address, profiler_ABI, provider)
+    await profiler.connect(signer).sendSomfn("0xB0acF74E5a0295A40915a8229Ea56CEc53379916", {
+        value: ethers.utils.parseEther("1"),
+    })
+    console.log("done")
 }

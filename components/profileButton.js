@@ -14,6 +14,8 @@ export const ProfileButtons = ({
     setCurrentPage,
     currentPage,
     account,
+    setEditing,
+    setId,
 }) => {
     const [text, setText] = useState("Register as an Instructor")
 
@@ -137,7 +139,8 @@ export const ProfileButtons = ({
                 className={`self-end bg-blue-200 text-indigo-800 rounded-lg p-1 font-semibold text-sm`}
                 onClick={() => {
                     handle()
-                    console.log(currentPage)
+                    setEditing(false)
+                    setId(undefined)
                 }}
             >
                 {text}

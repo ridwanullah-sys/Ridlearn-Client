@@ -1,9 +1,16 @@
 import { deleteAccount, editAccount } from "@/utils/helper_functions"
 import { useEffect, useState } from "react"
 import { BsPerson } from "react-icons/bs"
-import { SiGmail } from "react-icons/si"
 
-export const Student = ({ userData, setError, account, setCurrentPage, setEditing }) => {
+export const Student = ({
+    userData,
+    setError,
+    account,
+    setCurrentPage,
+    setEditing,
+    isWeb3Enabled,
+    provider,
+}) => {
     const [data, setData] = useState()
     useEffect(() => {
         setData(undefined)
@@ -26,14 +33,13 @@ export const Student = ({ userData, setError, account, setCurrentPage, setEditin
                         {data.name}
                     </div>
 
-                    <div className="font-semibold text-xl text-emerald-100 flex justify-center items-center">
+                    <div className="font-semibold text-3xl text-emerald-100 flex justify-center items-center">
                         <BsPerson className="font-thin text-emerald-100 mx-2" />
                         {data.username}
                     </div>
 
                     <div className="font-semibold text-xl text-emerald-100 flex justify-center items-center">
-                        <SiGmail className="mx-2 border-2 rounded-full p-2 w-10 h-10 bg-red-600" />
-                        {data.email}
+                        {data.firstname + " " + data.lastname}
                     </div>
                     <div className="my-5 flex flex-col gap-6">
                         <button
@@ -47,7 +53,7 @@ export const Student = ({ userData, setError, account, setCurrentPage, setEditin
                         </button>
                         <button
                             onClick={() => {
-                                deleteAccount(setError, account, data.username)
+                                deleteAccount(isWeb3Enabled, provider)
                             }}
                             className="bg-red-800 mx-4 text-slate-200 p-1 rounded-lg text-base font-semibold border-2 border-slate-200"
                         >

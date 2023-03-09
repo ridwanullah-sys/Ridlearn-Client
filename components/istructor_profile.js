@@ -3,18 +3,71 @@ import { SiGmail } from "react-icons/si"
 import { BsFacebook } from "react-icons/bs"
 import { BsYoutube } from "react-icons/bs"
 import { useEffect, useState } from "react"
-export const Instructor = ({ instructorData }) => {
+import { getInstructorData } from "@/utils/helper_functions"
+import { LoadingProfile } from "./loading"
+export const Instructor = ({
+    instructorData,
+    isWeb3Enabled,
+    provider,
+    setCurrentPage,
+    setEditing,
+    id,
+    setId,
+    userIds,
+    setLoadingInstructorData,
+}) => {
     const [data, setData] = useState()
+
+    useEffect(() => {
+        if (id != undefined) {
+            getInstructorData(
+                isWeb3Enabled,
+                id.toString(),
+                provider,
+                setData,
+                setLoadingInstructorData
+            )
+        }
+    }, [id])
+
     useEffect(() => {
         setData(undefined)
-        if (instructorData != undefined && instructorData != "Not An Instructor") {
-            setData(instructorData[0][0])
+        if (instructorData.length < 2 && instructorData != "Not An Instructor") {
+            setId(instructorData[0])
         }
+        console.log(instructorData)
     }, [instructorData])
     return (
-        <div className="text-2xl">
-            {!data ? (
-                <div>{null}</div>
+        <div className="text-2xl p-5">
+            {!id ? (
+                <div className="flex flex-col gap-3 items-start">
+                    {!instructorData || instructorData == "Not An Instructor"
+                        ? null
+                        : userIds
+                        ? Object.keys(userIds).map((token) => {
+                              return (
+                                  <button
+                                      onClick={() => {
+                                          setId(token)
+                                      }}
+                                      className="bg-blue-300 text-slate-700 p-1 rounded-lg text-base font-semibold border-2 border-slate-200 w-full"
+                                  >
+                                      {userIds[token]}
+                                  </button>
+                              )
+                          })
+                        : null}
+                    <button
+                        onClick={async () => {
+                            setCurrentPage("instructorReg")
+                        }}
+                        className="bg-blue-500 text-slate-900 p-1 rounded-lg text-base font-semibold border-2 border-slate-200 w-full"
+                    >
+                        Register new Profile
+                    </button>
+                </div>
+            ) : !data ? (
+                <LoadingProfile />
             ) : (
                 <div className="text-2xl">
                     <div className="flex justify-center m-3">
@@ -49,16 +102,32 @@ export const Instructor = ({ instructorData }) => {
                         <p className="text-emerald-100">{data.links[0].youtube}</p>
                     </div>
                     <div className="my-5 flex flex-col gap-6">
-                        <button className="bg-emerald-800 mx-4 text-slate-200 p-1 rounded-lg text-base font-semibold border-2 border-slate-200">
+                        <button
+                            onClick={() => {
+                                setCurrentPage("instructorReg")
+                                setEditing(true)
+                            }}
+                            className="bg-emerald-800 mx-4 text-slate-200 p-1 rounded-lg text-base font-semibold border-2 border-slate-200"
+                        >
                             Edit Profile
                         </button>
                         <button
-                            onClick={() => {
-                                console.log(data.links[0].email)
+                            onClick={async () => {
+                                await deleteAccount(isWeb3Enabled, provider)
+                                setId(undefined)
                             }}
                             className="bg-red-800 mx-4 text-slate-200 p-1 rounded-lg text-base font-semibold border-2 border-slate-200"
                         >
                             Delete Profile
+                        </button>
+                        <button
+                            onClick={async () => {
+                                setCurrentPage("instructorReg")
+                                setId(undefined)
+                            }}
+                            className="bg-blue-500 text-slate-900 p-1 rounded-lg text-base font-semibold border-2 border-slate-200 w-full"
+                        >
+                            Register new Profile
                         </button>
                     </div>
                     <div>

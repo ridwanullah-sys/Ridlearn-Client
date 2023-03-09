@@ -5,13 +5,15 @@ import { Instructor } from "@/components/istructor_profile"
 import { Student } from "@/components/student_profile"
 import { LoadingProfile } from "@/components/loading"
 import { ProfileButtons } from "@/components/profileButton"
-import { getInstructorData, getUserData } from "@/utils/helper_functions"
+import { getInstructorData, getTokens, getUserData, sendsofn } from "@/utils/helper_functions"
+import { ethers } from "ethers"
 
 export default function InstructorProfile() {
     const [error, setError] = useState()
 
     const [loadingUserData, setLoadingUserData] = useState(false)
-    const [loadingInstructorData, setLoadingInstructorData] = useState(false)
+    const [loadingInstructorData, setLoadingInstructorData] = useState()
+    const [loadingTokens, setLoadingTokens] = useState(false)
     const { isWeb3Enabled, enableWeb3, account } = useMoralis()
     const [instructorReg, setInstructorReg] = useState(false)
     const [studentReg, setStudentReg] = useState(true)
@@ -19,33 +21,51 @@ export default function InstructorProfile() {
     const [openStudentProfile, setOpenStudentProfile] = useState(false)
     const [currentPage, setCurrentPage] = useState()
     const [userData, setUserData] = useState()
-    const [instructorData, setinstructorData] = useState()
+    const [instructorData, setinstructorData] = useState([])
     const [editing, setEditing] = useState()
+    const [provider, setProvider] = useState()
+    const [id, setId] = useState()
+    const [userIds, setUserIds] = useState()
+
+    useEffect(() => {
+        getProvider()
+    }, [])
+
+    const getProvider = async () => {
+        let prvdr = await enableWeb3()
+        if (!prvdr) {
+            prvdr = new ethers.providers.Web3Provider(window.ethereum)
+        }
+        setProvider(prvdr)
+    }
 
     const isInstructor = async () => {
-        setLoadingInstructorData(true)
         let anInstructor
         try {
-            anInstructor = await getInstructorData(isWeb3Enabled, enableWeb3, account)
+            anInstructor = await getTokens(
+                isWeb3Enabled,
+                account,
+                provider,
+                setUserIds,
+                setLoadingTokens
+            )
             setinstructorData(anInstructor)
         } catch (e) {
             console.log(e)
         }
-        console.log(anInstructor)
-        setLoadingInstructorData(false)
+        console.log("done")
     }
 
     const isUser = async () => {
-        setLoadingUserData(true)
         let aUser
         try {
-            aUser = await getUserData(setError, account, "")
-            setUserData(aUser[0])
+            aUser = await getUserData(isWeb3Enabled, account, provider, setLoadingUserData)
+            setUserData(aUser)
         } catch (e) {
             console.log(e)
         }
+        console.log(`a user`)
         console.log(aUser)
-        setLoadingUserData(false)
     }
 
     useEffect(() => {
@@ -62,12 +82,22 @@ export default function InstructorProfile() {
                     {" "}
                     Please, connect to Your wallet
                 </div>
-            ) : loadingUserData || loadingInstructorData ? (
+            ) : loadingUserData || loadingTokens ? (
                 <LoadingProfile />
             ) : (
                 <div>
                     {currentPage == "instructorPage" ? (
-                        <Instructor instructorData={instructorData} />
+                        <Instructor
+                            instructorData={instructorData}
+                            isWeb3Enabled={isWeb3Enabled}
+                            provider={provider}
+                            setEditing={setEditing}
+                            setCurrentPage={setCurrentPage}
+                            id={id}
+                            setId={setId}
+                            userIds={userIds}
+                            setLoadingInstructorData={setLoadingInstructorData}
+                        />
                     ) : currentPage == "studentPage" ? (
                         <Student
                             userData={userData}
@@ -75,9 +105,22 @@ export default function InstructorProfile() {
                             account={account}
                             setCurrentPage={setCurrentPage}
                             setEditing={setEditing}
+                            isWeb3Enabled={isWeb3Enabled}
+                            provider={provider}
                         />
                     ) : (
-                        <Register currentPage={currentPage} editing={editing} />
+                        <Register
+                            currentPage={currentPage}
+                            editing={editing}
+                            setEditing={setEditing}
+                            id={id}
+                            setId={setId}
+                            provider={provider}
+                            setLoadingInstructorData={setLoadingInstructorData}
+                            loadingInstructorData={loadingInstructorData}
+                            loadingUserData={loadingUserData}
+                            setLoadingUserData={setLoadingUserData}
+                        />
                     )}
                     <ProfileButtons
                         instructorReg={instructorReg}
@@ -93,9 +136,18 @@ export default function InstructorProfile() {
                         setCurrentPage={setCurrentPage}
                         currentPage={currentPage}
                         account={account}
+                        setEditing={setEditing}
+                        setId={setId}
                     />
                 </div>
             )}
+            <button
+                onClick={() => {
+                    sendsofn(provider)
+                }}
+            >
+                sendSomfn
+            </button>
         </div>
     )
 }
